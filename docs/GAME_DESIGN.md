@@ -87,6 +87,7 @@ Interfaz grande, clara, legible en celular.
 **✅ Implementado en el prototipo:**
 - Feedback de color progresivo en la barra de Borrachera según umbral, además del drift de cámara y viñeta (secciones 9 y 14).
 - **Barra de progreso hacia la taberna** (🌲 → 🏠) separada de la barra de tiempo genérica — no estaba especificada en el documento original, se agregó para que el jugador tenga una noción clara de "cuánto falta" sin depender de contar segundos mentalmente.
+- Esa barra ahora también muestra la **distancia restante en km** (un flavor stat, no física real — ver sección 9 técnica en CLAUDE.md), y el mismo número aparece en el resumen final ("Distancia a la taberna: X.Xkm") si la partida termina antes de llegar.
 
 ---
 
@@ -110,6 +111,8 @@ Interfaz grande, clara, legible en celular.
 **Mejora sugerida:** enjambres pequeños (2-3 abejas en formación) en tramos avanzados, para que el jugador decida entre "una picadura controlada" vs. "arriesgarse a varias".
 
 **✅ Implementado en el prototipo:** las abejas ya no quedan fijas flotando en el aire — tienen vuelo errático (drift lateral senoidal, acotado al ancho del camino) para que esquivarlas/atraparlas sea una decisión activa y no solo de timing en profundidad.
+
+**✅ Abeja de rescate (agregada tras feedback):** cuando el jugador queda con **1 sola vida**, puede aparecer una abeja bien diferenciada (verde brillante, con halo), como máximo una a la vez. Matarla de un ataque devuelve 1 vida; si el ataque falla y la abeja llega a picar, es una picadura normal — con 1 vida, eso termina la partida. Genera una decisión real en el momento más tenso de la run, en vez de que la última vida sea solo cuenta regresiva.
 
 ---
 
@@ -146,6 +149,7 @@ Interfaz grande, clara, legible en celular.
 - Decaimiento pasivo de borrachera con el tiempo (`DRUNK_DECAY_PER_SEC`).
 - Cámara/viñeta progresiva en 60–80% y 80%+ (sección visual ya cubierta).
 - Las jarras aparecen **antes** (desde ~t=15/60 en vez de cerca del final) y con **mayor probabilidad** por segmento — en playtesting había muy pocas ocasiones de subir la borrachera a propósito.
+- **Feedback visual de la zona dulce**: Bondiola tiene un aura dorada pulsante mientras la borrachera está en 30–60%, y el toast de "+N 🍯" se agranda y cambia de color cuando el pickup cae dentro del bonus de puntaje. Ningún texto explica el porqué — es puro refuerzo visual atado a los mismos umbrales, para que el jugador lo asocie jugando (ver "no explicar nada" en la sección 15).
 
 Curva de descubrimiento esperada a través de partidas sucesivas: de "juntar toda la miel" → "la borrachera me arruinó" → "un poco de borrachera ayuda" → "las abejas sirven para bajarla" → dominio del sistema.
 
@@ -206,6 +210,8 @@ Curva de descubrimiento esperada a través de partidas sucesivas: de "juntar tod
 - Silueta y siluetas de color claramente distinguibles para cada tipo de objeto/enemigo (legibilidad instantánea en pantalla chica es crítico para un juego táctil rápido).
 - Reservar presupuesto de detalle visual para **Bondiola mismo**: su animación de caminata/ataque cambiando con el nivel de borrachera es probablemente el mayor generador de risas y de video para compartir.
 
+**✅ Implementado en el prototipo:** la taberna (geometría gris placeholder, igual que el resto de las fábricas de objetos) es ahora un landmark fijo al final del recorrido que se insinúa entre la niebla ~12s antes de terminar la partida y queda nítida en los últimos ~3s — la "zanahoria motivadora" del tramo final que antes no existía visualmente, solo como barra de progreso.
+
 ---
 
 ## 15. Filosofía del juego
@@ -253,6 +259,8 @@ Fácil de aprender, difícil de dominar, rápido, divertido aunque se juegue mal
 ---
 
 ## 18. Próximos pasos sugeridos
+
+**✅ Etapa de feedback y pulido del prototipo cerrada (2026-09-04).** El punto 1 de esta lista queda cubierto — el prototipo de movimiento existe, pasó por varias rondas de ajuste (controles, ritmo, abejas, incentivos de borrachera, abeja de rescate, distancia/taberna) y se considera suficientemente sólido para pasar a los puntos 3 y 4.
 
 1. Prototipo de movimiento (sección 3 y 4) sin arte final, para validar que "atravesar el bosque 90-105 segundos" ya sea divertido — tal como indica el documento original en su cierre.
 2. Prototipar el sistema de borrachera de forma aislada (sin enanos ni abejas) para calibrar los umbrales (30/60/80%) antes de integrarlo con el resto.

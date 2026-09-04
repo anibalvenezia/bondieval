@@ -8,9 +8,11 @@ Prototipo jugable (`index.html`), autocontenido, hecho con [Three.js](https://th
 
 - Movimiento por arrastre (lateral + profundidad) y ataque por toque, con botón de pausa.
 - Ancho de camino variable a lo largo del recorrido, y velocidad de avance que sube por escalones cada 12s.
-- Sistema completo de Miel / Enemigos / Borrachera / Vida, con decaimiento pasivo y efectos visuales por tramo de borrachera (bonus de puntaje y alcance de ataque en la "zona dulce", drift de cámara, viñeta).
+- Sistema completo de Miel / Enemigos / Borrachera / Vida, con decaimiento pasivo y efectos visuales por tramo de borrachera: aura dorada pulsante y toast reforzado en la "zona dulce" (30–60%, bonus de puntaje y alcance de ataque), drift de cámara y viñeta en borrachera alta.
 - Panales, abejas (con vuelo errático), enanos ladrones y jarras de hidromiel, con pacing por tiempo siguiendo el guión de partida del documento de diseño.
-- Barra de progreso hacia la taberna, además de las stats de Miel/Enemigos/Vida y borrachera.
+- Abeja de rescate: aparece diferenciada cuando queda 1 sola vida — matarla de un ataque devuelve una vida, fallar y que pique es una picadura normal.
+- Barra de progreso hacia la taberna con distancia restante en km, además de las stats de Miel/Enemigos/Vida y borrachera; la misma distancia se muestra en el resumen si la partida termina antes de llegar.
+- La taberna se insinúa entre la niebla en el tramo final y se va acercando hasta el final de la partida.
 - Cuatro finales (normal, borracho, fantasma, heroico) con apodo cómico calculado.
 - Mejor puntaje persistente y pantalla de resultados.
 
@@ -30,4 +32,4 @@ El documento de diseño completo, con las mejoras propuestas sobre el concepto o
 
 ## Próximos pasos
 
-Ver la sección "Próximos pasos sugeridos" del documento de diseño: testeo con no-gamers, arte final (reemplazar geometría gris), SFX/música, y feature de compartir resultado como imagen.
+Con esto se da por cerrada la etapa de feedback y pulido del prototipo. Ver la sección "Próximos pasos sugeridos" del documento de diseño: testeo con no-gamers, arte final (reemplazar geometría gris), SFX/música, y feature de compartir resultado como imagen.
