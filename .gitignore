@@ -3,3 +3,6 @@ Thumbs.db
 node_modules/
 dist/
 *.log
+
+# Notas personales de Claude Code (no se comparten con el equipo)
+CLAUDE.local.md
