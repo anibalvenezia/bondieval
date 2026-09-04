@@ -390,6 +390,16 @@ function initThree(){
   nose.position.set(0,1.72,0.32);
   player.group.add(nose);
   player.mesh = body;
+
+  // aura dorada: se prende sola en la "zona dulce" de borrachera (30-60%), ver updateDrunkFX
+  const aura = new THREE.Mesh(
+    new THREE.SphereGeometry(0.62, 12, 12),
+    new THREE.MeshBasicMaterial({ color:0xffcf6b, transparent:true, opacity:0, depthWrite:false })
+  );
+  aura.position.y = 1.05;
+  player.group.add(aura);
+  player.aura = aura;
+
   scene.add(player.group);
 
   resize();
@@ -583,12 +593,16 @@ function cleanupBehind(){
 /* ============================================================
    TOASTS
    ============================================================ */
-function toast(text, color){
+function toast(text, color, big){
   const layer = document.getElementById('toastLayer');
   const el = document.createElement('div');
   el.className = 'toast';
   el.textContent = text;
   if (color) el.style.color = color;
+  if (big){
+    el.style.fontSize = '26px';
+    el.style.textShadow = '0 2px 4px rgba(0,0,0,0.8), 0 0 16px rgba(255,207,107,0.9)';
+  }
   layer.appendChild(el);
   setTimeout(()=> el.remove(), 1200);
 }
@@ -668,9 +682,10 @@ function doAttack(){
       hit = true;
       enemigos += 1;
       if (Math.random() < 0.4){
+        const bonus = scoredHoney(1) > 1;
         miel += 1;
         mielScore += scoredHoney(1);
-        toast('+1 🍯', '#f2c23b');
+        toast('+1 🍯', bonus?'#ffe066':'#f2c23b', bonus);
       }
       toast('¡Enano derrotado! +1 ⚔️', '#e8871e');
     }
@@ -710,9 +725,10 @@ function checkPassiveCollisions(){
     if (Math.abs(dx) < R && Math.abs(dz) < R){
       o.userData.alive = false;
       const gained = scoredHoney(o.userData.value);
+      const bonus = gained > o.userData.value;
       miel += o.userData.value;
       mielScore += gained;
-      toast('+'+o.userData.value+' 🍯', '#f2c23b');
+      toast('+'+o.userData.value+' 🍯', bonus?'#ffe066':'#f2c23b', bonus);
     }
   });
 
@@ -797,6 +813,14 @@ function updateDrunkFX(dt, t){
   } else {
     vignette.style.opacity = 0;
   }
+
+  // zona dulce (30-60%): aura dorada pulsante en Bondiola — comunica el bonus
+  // de scoredHoney() y el mayor alcance de ataque (doAttack) sin explicarlo en texto
+  const targetOpacity = (borrachera >= 30 && borrachera <= 60)
+    ? 0.22 + 0.12*Math.sin(t*4.5)
+    : 0;
+  player.aura.material.opacity += (targetOpacity - player.aura.material.opacity) * Math.min(1, dt*6);
+
   return { camDriftX, camDriftY };
 }
 
