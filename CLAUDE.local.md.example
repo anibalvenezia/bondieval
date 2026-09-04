@@ -1,0 +1,15 @@
+<!--
+  Plantilla para tus preferencias personales de este proyecto.
+  Copiá este archivo como CLAUDE.local.md (sin el ".example") en la raíz del repo.
+  CLAUDE.local.md ya está en .gitignore, así que no se sube a GitHub ni se comparte
+  con nadie más — es solo para vos, en esta máquina.
+-->
+
+# Preferencias personales — Bondieval
+
+## Entorno local
+- Puerto que uso para probar: 8000
+- (Agregá acá cualquier dato de tu setup que Claude debería recordar, ej. si usás un celular específico para testear por wifi, alguna URL de sandbox, etc.)
+
+## Cosas que ya le aclaré a Claude y no quiero repetir
+- (Ejemplo: "siempre corré `python3 -m http.server` en vez de sugerirme instalar algo nuevo")
