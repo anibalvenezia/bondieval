@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Bondieval — Prototipo</title>
+<style>
+  :root{
+    --parchment:#f4e4c1;
+    --wood:#5b3a26;
+    --wood-dark:#3a2417;
+    --honey:#f2a93b;
+    --honey-dark:#c97a1a;
+    --forest:#2f4b3c;
+    --forest-dark:#1b2e23;
+    --tavern-red:#a8342a;
+    --drunk:#7a2c5c;
+    --ink:#2a1c12;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; height:100%; overflow:hidden;
+    background:var(--forest-dark);
+    font-family:Georgia,'Times New Roman',serif;
+    color:var(--parchment);
+    touch-action:none;
+    user-select:none;
+  }
+  #stage{
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--forest-dark);
+  }
+  #frame{
+    position:relative;
+    width:100%; height:100%;
+    max-width:520px;
+    background:#000;
+    overflow:hidden;
+    box-shadow:0 0 60px rgba(0,0,0,0.6);
+  }
+  #gameCanvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:absolute; top:0; left:0; right:0;
+    padding:10px 12px 0;
+    display:flex; flex-direction:column; gap:6px;
+    pointer-events:none;
+    z-index:10;
+  }
+  #stats{
+    display:flex; gap:6px; justify-content:space-between;
+  }
+  .stat{
+    display:flex; align-items:center; gap:5px;
+    background:rgba(42,28,18,0.55);
+    border:2px solid rgba(244,228,193,0.35);
+    border-radius:14px;
+    padding:5px 10px;
+    font-size:15px;
+    font-weight:bold;
+    backdrop-filter:blur(2px);
+  }
+  .stat .icon{ font-size:16px; filter:drop-shadow(0 1px 1px rgba(0,0,0,.6)); }
+  #hearts{ letter-spacing:2px; font-size:15px; }
+  #drunkWrap{
+    background:rgba(42,28,18,0.55);
+    border:2px solid rgba(244,228,193,0.35);
+    border-radius:14px;
+    padding:5px 10px;
+    display:flex; align-items:center; gap:8px;
+  }
+  #drunkBar{
+    flex:1; height:9px; border-radius:6px;
+    background:rgba(0,0,0,0.4);
+    overflow:hidden;
+    border:1px solid rgba(244,228,193,0.3);
+  }
+  #drunkFill{
+    height:100%; width:0%;
+    background:linear-gradient(90deg,#f2a93b,#e8871e);
+    transition:background .3s ease;
+  }
+  #progressWrap{
+    height:6px; border-radius:4px; background:rgba(0,0,0,0.35);
+    overflow:hidden; margin-top:2px;
+    border:1px solid rgba(244,228,193,0.25);
+  }
+  #progressFill{ height:100%; width:0%; background:var(--parchment); opacity:.85; }
+
+  /* ---------- Toasts ---------- */
+  #toastLayer{
+    position:absolute; left:0; right:0; top:38%;
+    display:flex; flex-direction:column; align-items:center;
+    pointer-events:none; z-index:15;
+  }
+  .toast{
+    font-weight:bold; font-size:20px;
+    padding:4px 10px;
+    color:var(--parchment);
+    text-shadow:0 2px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5);
+    animation:toastUp 1.1s ease-out forwards;
+    white-space:nowrap;
+  }
+  @keyframes toastUp{
+    0%{ transform:translateY(10px); opacity:0; }
+    15%{ opacity:1; transform:translateY(0); }
+    75%{ opacity:1; }
+    100%{ transform:translateY(-30px); opacity:0; }
+  }
+
+  /* ---------- Vignette (borrachera alta) ---------- */
+  #vignette{
+    position:absolute; inset:0; pointer-events:none; z-index:8;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(74,10,45,0) 55%, rgba(74,10,45,0) 100%);
+    opacity:0;
+    transition:opacity .4s ease, background .4s ease;
+  }
+
+  /* ---------- Overlays ---------- */
+  .overlay{
+    position:absolute; inset:0; z-index:30;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center;
+    padding:28px;
+    background:
+      linear-gradient(rgba(20,12,8,0.72),rgba(20,12,8,0.88)),
+      radial-gradient(ellipse at 50% 20%, rgba(242,169,59,0.25), transparent 60%);
+  }
+  .hidden{ display:none !important; }
+  .title{
+    font-size:44px; font-weight:bold; letter-spacing:1px;
+    color:var(--honey);
+    text-shadow:0 3px 0 var(--wood-dark), 0 6px 14px rgba(0,0,0,0.6);
+    margin:0 0 6px;
+  }
+  .subtitle{
+    font-size:16px; color:var(--parchment); opacity:.85;
+    margin:0 0 26px; max-width:320px; line-height:1.4;
+  }
+  .btn{
+    font-family:Georgia,serif;
+    font-size:18px; font-weight:bold;
+    color:var(--parchment);
+    background:linear-gradient(180deg,var(--honey),var(--honey-dark));
+    border:none; border-radius:30px;
+    padding:14px 38px;
+    box-shadow:0 4px 0 #8a5410, 0 8px 16px rgba(0,0,0,0.4);
+    cursor:pointer;
+    color:var(--ink);
+    pointer-events:auto;
+  }
+  .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #8a5410; }
+  .btn.secondary{
+    background:transparent;
+    border:2px solid rgba(244,228,193,0.5);
+    color:var(--parchment);
+    box-shadow:none;
+    margin-top:12px;
+    padding:10px 28px;
+    font-size:15px;
+  }
+  .hint{
+    margin-top:22px; font-size:13px; color:rgba(244,228,193,0.6);
+    max-width:280px; line-height:1.5;
+  }
+  .controlsRow{ display:flex; gap:18px; margin:18px 0 4px; font-size:13px; color:rgba(244,228,193,0.75); }
+  .controlsRow div{ display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .controlsRow .glyph{ font-size:26px; }
+
+  /* results */
+  #resultLine{
+    display:flex; gap:14px; font-size:18px; font-weight:bold; margin-bottom:6px;
+  }
+  #scoreBig{
+    font-size:52px; font-weight:bold; color:var(--honey);
+    text-shadow:0 3px 0 var(--wood-dark);
+    margin:6px 0 2px;
+  }
+  #nickname{
+    font-size:20px; color:var(--parchment);
+    font-style:italic; margin-bottom:4px;
+  }
+  #endMsg{ font-size:14px; opacity:.8; max-width:300px; margin-bottom:10px;}
+  #bestScore{ font-size:13px; opacity:.7; margin-bottom:18px; }
+
+  #startPrompt{
+    position:absolute; bottom:26px; left:0; right:0; text-align:center;
+    z-index:12; pointer-events:none; opacity:0; transition:opacity .3s;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="frame">
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="hud" class="hidden">
+      <div id="stats">
+        <div class="stat"><span class="icon">🍯</span><span id="mielVal">0</span></div>
+        <div class="stat"><span class="icon">⚔️</span><span id="enemVal">0</span></div>
+        <div class="stat"><span class="icon">❤️</span><span id="hearts">♥♥♥</span></div>
+      </div>
+      <div id="drunkWrap">
+        <span class="icon">🍺</span>
+        <div id="drunkBar"><div id="drunkFill"></div></div>
+        <span id="drunkPct" style="font-size:12px; min-width:32px; text-align:right;">0%</span>
+      </div>
+      <div id="progressWrap"><div id="progressFill"></div></div>
+    </div>
+
+    <div id="vignette"></div>
+    <div id="toastLayer"></div>
+
+    <div id="startOverlay" class="overlay">
+      <h1 class="title">BONDIEVAL</h1>
+      <p class="subtitle">Corré por el bosque, juntá miel, no te dejes robar… y ojo con la hidromiel.</p>
+      <div class="controlsRow">
+        <div><span class="glyph">👆↔️</span>Arrastrá para moverte</div>
+        <div><span class="glyph">👆⚔️</span>Tocá a Bondiola para atacar</div>
+      </div>
+      <button class="btn" id="startBtn">Empezar partida</button>
+      <p class="hint">Partida de ~100 segundos. Nadie te va a explicar el sistema — jugá y descubrilo.</p>
+    </div>
+
+    <div id="endOverlay" class="overlay hidden">
+      <div id="endMsg"></div>
+      <div id="scoreBig">0</div>
+      <div id="nickname"></div>
+      <div id="resultLine"><span id="resMiel">🍯 0</span><span id="resEnem">⚔️ 0</span><span id="resDrunk">🍺 0%</span></div>
+      <div id="bestScore"></div>
+      <button class="btn" id="retryBtn">Jugar de nuevo</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const CFG = {
+  DURATION: 100,           // segundos, partida fija
+  BASE_SPEED: 2.3,         // unidades/seg de avance automático
+  SPRINT_SPEED: 3.6,       // velocidad en el tramo final
+  SPRINT_START_T: 92,      // últimos ~8s: sprint visual
+  SEGMENT_LEN: 6,          // longitud de cada "segmento" de spawn
+  PLAYER_LATERAL_SPEED: 6, // sensibilidad de arrastre lateral
+  PLAYER_DEPTH_RANGE: 1.6, // banda de profundidad controlable
+  LIVES: 3,
+  DRUNK_DECAY_PER_SEC: 0.45,
+  BEE_STING_LIFE: 1,
+  BEE_STING_DRUNK: -20,
+  JAR_DRUNK: 20,
+  DWARF_STEAL: 1,
+  HONEY_BASE: 1,
+  HONEY_EXPOSED: 3,
+};
+
+function pathHalfWidthAt(z){
+  return THREE.MathUtils.clamp(2.6 + Math.sin(z*0.018)*1.15, 1.55, 4.2);
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let renderer, scene, camera, clock;
+let frameEl = document.getElementById('frame');
+let canvas = document.getElementById('gameCanvas');
+
+let state = 'start'; // 'start' | 'playing' | 'end'
+let elapsed = 0;
+let speed = CFG.BASE_SPEED;
+
+let player = {
+  x: 0, targetX: 0,
+  depth: 0, targetDepth: 0,
+  worldZ: 0,
+  mesh: null, group:null,
+  attackCooldown: 0,
+  attackFlash: 0,
+  hitFlash: 0,
+};
+
+let miel = 0, enemigos = 0, borrachera = 0, vidas = CFG.LIVES;
+let mielScore = 0; // acumulado ya con multiplicadores aplicados
+let lastSpawnZ = 0;
+let objects = { honey: [], bees: [], dwarves: [], jars: [], trees: [] };
+
+let bestScoreCache = null;
+
+/* input */
+let dragging = false;
+let dragStartX = 0, dragStartY = 0;
+let dragLastX = 0, dragLastY = 0;
+let dragMoved = false;
+let pointerDownTime = 0;
+
+/* ============================================================
+   INIT THREE
+   ============================================================ */
+function initThree(){
+  renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xbfe0ea);
+  scene.fog = new THREE.Fog(0xbfe0ea, 22, 62);
+
+  camera = new THREE.PerspectiveCamera(58, 1, 0.1, 200);
+
+  const hemi = new THREE.HemisphereLight(0xfff3d6, 0x3a4a2e, 0.95);
+  scene.add(hemi);
+  const dir = new THREE.DirectionalLight(0xfff0d0, 0.9);
+  dir.position.set(4,10,6);
+  scene.add(dir);
+
+  // ground
+  const groundGeo = new THREE.PlaneGeometry(60, 260, 1, 1);
+  const groundMat = new THREE.MeshLambertMaterial({ color: 0x3f6b3f });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI/2;
+  ground.position.set(0, 0, -60);
+  scene.add(ground);
+
+  // path strip (visual)
+  const pathGeo = new THREE.PlaneGeometry(8, 260, 1, 1);
+  const pathMat = new THREE.MeshLambertMaterial({ color: 0x9c7b4f });
+  const pathMesh = new THREE.Mesh(pathGeo, pathMat);
+  pathMesh.rotation.x = -Math.PI/2;
+  pathMesh.position.set(0, 0.01, -60);
+  scene.add(pathMesh);
+
+  // player
+  player.group = new THREE.Group();
+  const bodyGeo = new THREE.CapsuleGeometry ? new THREE.CapsuleGeometry(0.45, 0.7, 4, 8) : new THREE.CylinderGeometry(0.45,0.45,1.4,10);
+  const bodyMat = new THREE.MeshLambertMaterial({ color: 0xc97a1a });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = 1.0;
+  player.group.add(body);
+  const headGeo = new THREE.SphereGeometry(0.32, 12, 10);
+  const headMat = new THREE.MeshLambertMaterial({ color: 0xf0c090 });
+  const head = new THREE.Mesh(headGeo, headMat);
+  head.position.y = 1.75;
+  player.group.add(head);
+  const noseGeo = new THREE.ConeGeometry(0.08,0.18,6);
+  const nose = new THREE.Mesh(noseGeo, new THREE.MeshLambertMaterial({color:0xd88b5a}));
+  nose.rotation.x = Math.PI/2;
+  nose.position.set(0,1.72,0.32);
+  player.group.add(nose);
+  player.mesh = body;
+  scene.add(player.group);
+
+  resize();
+  window.addEventListener('resize', resize);
+}
+
+function resize(){
+  const w = frameEl.clientWidth, h = frameEl.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w/h;
+  camera.updateProjectionMatrix();
+}
+
+/* ============================================================
+   ENVIRONMENT / SPAWN
+   ============================================================ */
+function makeTree(x, z){
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18,0.24,1.6,7),
+    new THREE.MeshLambertMaterial({ color:0x5b3a26 })
+  );
+  trunk.position.y = 0.8;
+  g.add(trunk);
+  const leaves = new THREE.Mesh(
+    new THREE.ConeGeometry(1.1,2.1,8),
+    new THREE.MeshLambertMaterial({ color: Math.random()>0.5?0x2f4b3c:0x3a5c44 })
+  );
+  leaves.position.y = 2.2;
+  g.add(leaves);
+  g.position.set(x, 0, -z);
+  g.userData.worldZ = z;
+  scene.add(g);
+  objects.trees.push(g);
+}
+
+function makeHoney(x, z, exposed){
+  const g = new THREE.Group();
+  const geo = new THREE.SphereGeometry(0.32, 10, 8);
+  geo.scale(1,0.85,1);
+  const mat = new THREE.MeshLambertMaterial({ color: exposed?0xf2c23b:0xe8a93b, emissive:0x3a1e00, emissiveIntensity:0.15 });
+  const m = new THREE.Mesh(geo, mat);
+  m.position.y = 0.5;
+  g.add(m);
+  g.position.set(x, 0, -z);
+  g.userData = { worldZ:z, x, value: exposed?CFG.HONEY_EXPOSED:CFG.HONEY_BASE, alive:true, spin:Math.random()*10 };
+  scene.add(g);
+  objects.honey.push(g);
+}
+
+function makeBee(x, z){
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.22,8,8), new THREE.MeshLambertMaterial({color:0xf2d33b}));
+  g.add(body);
+  const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.22,0.05,6,10), new THREE.MeshLambertMaterial({color:0x1a1a1a}));
+  stripe.rotation.y = Math.PI/2;
+  g.add(stripe);
+  const wingGeo = new THREE.SphereGeometry(0.16,6,6);
+  wingGeo.scale(1,0.3,1.8);
+  const wingMat = new THREE.MeshLambertMaterial({ color:0xffffff, transparent:true, opacity:0.55 });
+  const w1 = new THREE.Mesh(wingGeo, wingMat); w1.position.set(0.18,0.18,0); g.add(w1);
+  const w2 = new THREE.Mesh(wingGeo, wingMat); w2.position.set(-0.18,0.18,0); g.add(w2);
+  g.position.set(x, 1.3, -z);
+  g.userData = { worldZ:z, x, alive:true, bob:Math.random()*10, baseY:1.3 };
+  scene.add(g);
+  objects.bees.push(g);
+}
+
+function makeDwarf(x, z){
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.4,0.85,8), new THREE.MeshLambertMaterial({color:0x7a5230}));
+  body.position.y=0.55;
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26,10,8), new THREE.MeshLambertMaterial({color:0xe0b088}));
+  head.position.y=1.05;
+  g.add(head);
+  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.3,0.4,8), new THREE.MeshLambertMaterial({color:0xa8342a}));
+  hat.position.y=1.35;
+  g.add(hat);
+  g.position.set(x, 0, -z);
+  g.userData = { worldZ:z, x, alive:true, bob:Math.random()*10 };
+  scene.add(g);
+  objects.dwarves.push(g);
+}
+
+function makeJar(x, z){
+  const g = new THREE.Group();
+  const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.28,0.5,8), new THREE.MeshLambertMaterial({color:0x8b5a2b}));
+  jar.position.y = 0.35;
+  g.add(jar);
+  const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.14,8), new THREE.MeshLambertMaterial({color:0xd9b48f}));
+  cork.position.y = 0.65;
+  g.add(cork);
+  g.position.set(x,0,-z);
+  g.userData = { worldZ:z, x, alive:true, spin:Math.random()*10 };
+  scene.add(g);
+  objects.jars.push(g);
+}
+
+// pacing por tiempo transcurrido, según guión de la sección 12 del GDD
+function phaseFlags(t){
+  return {
+    honey: true,
+    bees: t >= 14,
+    dwarves: t >= 28,
+    jars: t >= 48,
+    chaos: t >= 68,
+    finalStretch: t >= 84,
+  };
+}
+
+function trySpawnAhead(){
+  const spawnHorizon = player.worldZ + 55;
+  while (lastSpawnZ < spawnHorizon){
+    lastSpawnZ += CFG.SEGMENT_LEN;
+    spawnSegment(lastSpawnZ);
+  }
+}
+
+function spawnSegment(z){
+  const hw = pathHalfWidthAt(z);
+  // arboles decorativos a los bordes
+  makeTree(hw + 0.8 + Math.random()*1.4, z + Math.random()*2);
+  makeTree(-(hw + 0.8 + Math.random()*1.4), z + 1 + Math.random()*2);
+
+  // estimamos el tiempo aproximado en que este segmento sera relevante
+  const approxT = z / CFG.BASE_SPEED;
+  const flags = phaseFlags(approxT);
+  const density = flags.chaos ? 1.0 : (flags.finalStretch ? 1.15 : 0.7);
+
+  const roll = Math.random();
+
+  if (flags.honey && roll < 0.55*density){
+    const exposed = Math.random() < 0.3;
+    const x = exposed ? (Math.random()>0.5?1:-1)*hw*0.85 : (Math.random()*2-1)*hw*0.55;
+    makeHoney(x, z + Math.random()*3, exposed);
+  }
+  if (flags.bees && Math.random() < 0.4*density){
+    const swarm = flags.chaos && Math.random()<0.4;
+    const count = swarm ? 2 + (Math.random()<0.4?1:0) : 1;
+    const baseX = (Math.random()*2-1)*hw*0.7;
+    for(let i=0;i<count;i++){
+      makeBee(baseX + i*0.7 - (count-1)*0.35, z + 1.5 + Math.random()*2 + i*0.4);
+    }
+  }
+  if (flags.dwarves && Math.random() < 0.32*density){
+    makeDwarf((Math.random()*2-1)*hw*0.75, z + 2 + Math.random()*3);
+  }
+  if (flags.jars && Math.random() < 0.22*density){
+    makeJar((Math.random()*2-1)*hw*0.6, z + 1 + Math.random()*3);
+  }
+}
+
+function cleanupBehind(){
+  const cutoff = player.worldZ - 8;
+  for (const key of ['honey','bees','dwarves','jars']){
+    objects[key] = objects[key].filter(o=>{
+      if (o.userData.worldZ < cutoff || !o.userData.alive){
+        scene.remove(o);
+        return false;
+      }
+      return true;
+    });
+  }
+  objects.trees = objects.trees.filter(o=>{
+    if (o.userData.worldZ < cutoff - 4){ scene.remove(o); return false; }
+    return true;
+  });
+}
+
+/* ============================================================
+   TOASTS
+   ============================================================ */
+function toast(text, color){
+  const layer = document.getElementById('toastLayer');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = text;
+  if (color) el.style.color = color;
+  layer.appendChild(el);
+  setTimeout(()=> el.remove(), 1200);
+}
+
+/* ============================================================
+   INPUT
+   ============================================================ */
+function setupInput(){
+  canvas.addEventListener('pointerdown', onPointerDown);
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerUp);
+}
+
+function onPointerDown(e){
+  if (state !== 'playing') return;
+  dragging = true;
+  dragMoved = false;
+  dragStartX = dragLastX = e.clientX;
+  dragStartY = dragLastY = e.clientY;
+  pointerDownTime = performance.now();
+}
+
+function onPointerMove(e){
+  if (!dragging || state!=='playing') return;
+  const dx = e.clientX - dragLastX;
+  const dy = e.clientY - dragLastY;
+  dragLastX = e.clientX;
+  dragLastY = e.clientY;
+  if (Math.abs(e.clientX-dragStartX) > 6 || Math.abs(e.clientY-dragStartY) > 6) dragMoved = true;
+
+  const w = frameEl.clientWidth;
+  const sensX = (CFG.PLAYER_LATERAL_SPEED * 8) / w;
+  player.targetX += dx * sensX;
+  const hw = pathHalfWidthAt(player.worldZ);
+  player.targetX = THREE.MathUtils.clamp(player.targetX, -hw+0.3, hw-0.3);
+
+  const h = frameEl.clientHeight;
+  const sensY = (CFG.PLAYER_DEPTH_RANGE*2 * 2.2) / h;
+  player.targetDepth = THREE.MathUtils.clamp(player.targetDepth - dy*sensY, -CFG.PLAYER_DEPTH_RANGE, CFG.PLAYER_DEPTH_RANGE);
+}
+
+function onPointerUp(e){
+  if (!dragging) return;
+  dragging = false;
+  const heldMs = performance.now() - pointerDownTime;
+  if (!dragMoved && heldMs < 350 && state === 'playing'){
+    doAttack();
+  }
+}
+
+/* ============================================================
+   GAMEPLAY LOGIC
+   ============================================================ */
+function doAttack(){
+  if (player.attackCooldown > 0) return;
+  player.attackCooldown = 0.35;
+  player.attackFlash = 0.25;
+
+  const px = player.x, pz = player.worldZ + player.depth;
+  let hit = false;
+
+  objects.dwarves.forEach(o=>{
+    if (!o.userData.alive) return;
+    const dz = o.userData.worldZ - pz;
+    const dx = o.userData.x - px;
+    if (Math.abs(dx) < 1.1 && dz > -1.2 && dz < 2.0){
+      o.userData.alive = false;
+      hit = true;
+      enemigos += 1;
+      if (Math.random() < 0.4){
+        miel += 1;
+        mielScore += scoredHoney(1);
+        toast('+1 🍯', '#f2c23b');
+      }
+      toast('¡Enano derrotado! +1 ⚔️', '#e8871e');
+    }
+  });
+
+  objects.bees.forEach(o=>{
+    if (!o.userData.alive) return;
+    const dz = o.userData.worldZ - pz;
+    const dx = o.userData.x - px;
+    if (Math.abs(dx) < 1.0 && dz > -1.2 && dz < 2.0){
+      o.userData.alive = false;
+      hit = true;
+    }
+  });
+
+  if (!hit){
+    // igual mostramos el gesto, sin feedback de texto para no saturar
+  }
+}
+
+function scoredHoney(base){
+  if (borrachera >= 30 && borrachera <= 60) return Math.round(base*1.5);
+  return base;
+}
+
+function checkPassiveCollisions(){
+  const px = player.x, pz = player.worldZ + player.depth;
+  const R = 0.85;
+
+  objects.honey.forEach(o=>{
+    if (!o.userData.alive) return;
+    const dz = o.userData.worldZ - pz, dx = o.userData.x - px;
+    if (Math.abs(dx) < R && Math.abs(dz) < R){
+      o.userData.alive = false;
+      const gained = scoredHoney(o.userData.value);
+      miel += o.userData.value;
+      mielScore += gained;
+      toast('+'+o.userData.value+' 🍯', '#f2c23b');
+    }
+  });
+
+  objects.bees.forEach(o=>{
+    if (!o.userData.alive) return;
+    const dz = o.userData.worldZ - pz, dx = o.userData.x - px;
+    if (Math.abs(dx) < R && Math.abs(dz) < R){
+      o.userData.alive = false;
+      vidas = Math.max(0, vidas - CFG.BEE_STING_LIFE);
+      borrachera = Math.max(0, borrachera + CFG.BEE_STING_DRUNK);
+      player.hitFlash = 0.35;
+      toast('¡Picadura! -1 ❤️', '#e05d5d');
+      if (vidas <= 0) endGame('ghost');
+    }
+  });
+
+  objects.dwarves.forEach(o=>{
+    if (!o.userData.alive) return;
+    const dz = o.userData.worldZ - pz, dx = o.userData.x - px;
+    if (Math.abs(dx) < R && Math.abs(dz) < R){
+      o.userData.alive = false;
+      if (miel > 0){
+        const steal = Math.min(miel, CFG.DWARF_STEAL);
+        miel -= steal;
+        toast('¡Te robaron miel!', '#c97a1a');
+      }
+    }
+  });
+
+  objects.jars.forEach(o=>{
+    if (!o.userData.alive) return;
+    const dz = o.userData.worldZ - pz, dx = o.userData.x - px;
+    if (Math.abs(dx) < R && Math.abs(dz) < R){
+      o.userData.alive = false;
+      borrachera = Math.min(100, borrachera + CFG.JAR_DRUNK);
+      toast('+20% 🍺', '#d98fc0');
+    }
+  });
+}
+
+/* ============================================================
+   MAIN LOOP
+   ============================================================ */
+function animateObject(o, dt, spinKey){
+  if (o.userData.spin !== undefined){
+    o.userData.spin += dt*2;
+    o.rotation.y = o.userData.spin;
+  }
+  if (o.userData.bob !== undefined){
+    o.userData.bob += dt*3;
+  }
+}
+
+function updatePositions(){
+  const renderZ = o => (player.worldZ - o.userData.worldZ);
+
+  objects.honey.forEach(o=>{ o.position.z = renderZ(o); o.position.y = 0.15 + Math.sin(performance.now()*0.003 + o.userData.spin)*0.06; });
+  objects.bees.forEach(o=>{ o.position.z = renderZ(o); o.position.y = o.userData.baseY + Math.sin(o.userData.bob)*0.18; o.rotation.y += 0.15; });
+  objects.dwarves.forEach(o=>{ o.position.z = renderZ(o); o.position.y = Math.max(0, Math.sin(o.userData.bob*2)*0.06); });
+  objects.jars.forEach(o=>{ o.position.z = renderZ(o); });
+  objects.trees.forEach(o=>{ o.position.z = renderZ(o); });
+}
+
+function updateDrunkFX(dt, t){
+  let camDriftX = 0, camDriftY = 0, fov = 58;
+  const vignette = document.getElementById('vignette');
+
+  if (borrachera >= 60 && borrachera < 80){
+    const k = (borrachera-60)/20;
+    camDriftX = Math.sin(t*1.7)*0.35*k;
+    camDriftY = Math.sin(t*1.3)*0.12*k;
+    vignette.style.opacity = (0.15*k).toFixed(2);
+    vignette.style.background = 'radial-gradient(ellipse at center, rgba(0,0,0,0) 35%, rgba(74,10,45,0.25) 75%, rgba(74,10,45,0.35) 100%)';
+  } else if (borrachera >= 80){
+    const k = Math.min(1, (borrachera-80)/20 + 0.6);
+    camDriftX = Math.sin(t*2.1)*0.55*k;
+    camDriftY = Math.sin(t*1.6)*0.2*k;
+    vignette.style.opacity = (0.35 + 0.35*k).toFixed(2);
+    vignette.style.background = 'radial-gradient(ellipse at center, rgba(0,0,0,0) 22%, rgba(74,10,45,0.55) 70%, rgba(20,4,14,0.75) 100%)';
+  } else {
+    vignette.style.opacity = 0;
+  }
+  return { camDriftX, camDriftY };
+}
+
+function updateHUD(){
+  document.getElementById('mielVal').textContent = miel;
+  document.getElementById('enemVal').textContent = enemigos;
+  document.getElementById('hearts').textContent = '♥'.repeat(Math.max(0,vidas)) + '♡'.repeat(CFG.LIVES-Math.max(0,vidas));
+  document.getElementById('drunkFill').style.width = borrachera.toFixed(0)+'%';
+  document.getElementById('drunkPct').textContent = borrachera.toFixed(0)+'%';
+
+  let barColor = '#f2a93b';
+  if (borrachera>=80) barColor = '#a8342a';
+  else if (borrachera>=60) barColor = '#c9622a';
+  else if (borrachera>=30) barColor = '#e8c23b';
+  document.getElementById('drunkFill').style.background = barColor;
+
+  document.getElementById('progressFill').style.width = Math.min(100,(elapsed/CFG.DURATION*100)).toFixed(1)+'%';
+}
+
+function loop(){
+  requestAnimationFrame(loop);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  if (state === 'playing'){
+    elapsed += dt;
+    speed = elapsed >= CFG.SPRINT_START_T ? CFG.SPRINT_SPEED : CFG.BASE_SPEED;
+    player.worldZ += speed*dt;
+
+    if (player.attackCooldown>0) player.attackCooldown -= dt;
+    if (player.attackFlash>0) player.attackFlash -= dt;
+    if (player.hitFlash>0) player.hitFlash -= dt;
+
+    borrachera = Math.max(0, borrachera - CFG.DRUNK_DECAY_PER_SEC*dt);
+
+    player.x += (player.targetX - player.x) * Math.min(1, dt*10);
+    player.depth += (player.targetDepth - player.depth) * Math.min(1, dt*8);
+
+    trySpawnAhead();
+    updatePositions();
+    checkPassiveCollisions();
+    cleanupBehind();
+    updateHUD();
+
+    if (elapsed >= CFG.DURATION){
+      endGame(borrachera>=80 ? 'drunk' : (enemigos>=10 && borrachera<20 ? 'hero' : 'normal'));
+    }
+  }
+
+  // player render
+  player.group.position.x = player.x;
+  player.group.position.z = player.depth;
+  const bob = state==='playing' ? Math.sin(performance.now()*0.012)*0.05 : 0;
+  player.group.position.y = bob;
+  player.group.rotation.z = (player.targetX-player.x)*-0.12;
+
+  if (player.attackFlash>0){
+    player.mesh.scale.set(1.15,0.9,1.15);
+  } else {
+    player.mesh.scale.set(1,1,1);
+  }
+  if (player.hitFlash>0){
+    player.mesh.material.emissive.setHex(0x550000);
+  } else {
+    player.mesh.material.emissive.setHex(0x000000);
+  }
+
+  const drift = updateDrunkFX(dt, elapsed);
+  const camX = player.x*0.4 + drift.camDriftX;
+  const camY = 3.1 + drift.camDriftY;
+  camera.position.x += (camX - camera.position.x)*0.12;
+  camera.position.y += (camY - camera.position.y)*0.12;
+  camera.position.z = 5.4;
+  camera.lookAt(player.x*0.3, 1.1, -2.2);
+
+  renderer.render(scene, camera);
+}
+
+/* ============================================================
+   GAME FLOW
+   ============================================================ */
+function resetGame(){
+  elapsed = 0; speed = CFG.BASE_SPEED;
+  player.x=0; player.targetX=0; player.depth=0; player.targetDepth=0; player.worldZ=0;
+  player.attackCooldown=0; player.attackFlash=0; player.hitFlash=0;
+  miel=0; enemigos=0; borrachera=0; vidas=CFG.LIVES; mielScore=0;
+  lastSpawnZ = 0;
+  for (const key of Object.keys(objects)){
+    objects[key].forEach(o=>scene.remove(o));
+    objects[key] = [];
+  }
+  document.getElementById('vignette').style.opacity = 0;
+  trySpawnAhead();
+}
+
+function startGame(){
+  resetGame();
+  state = 'playing';
+  document.getElementById('startOverlay').classList.add('hidden');
+  document.getElementById('endOverlay').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+}
+
+function nickname(){
+  if (vidas<=0) return 'Presa Fácil';
+  if (borrachera>=80 && enemigos<3) return 'Héroe Ebrio';
+  if (borrachera>=80) return 'Borracho Perdido';
+  if (borrachera<20 && enemigos>=10) return 'Recolector Sobrio';
+  if (borrachera>=30 && borrachera<=60) return 'Punto Justo';
+  if (miel>=25 && enemigos<2) return 'Pacifista de la Miel';
+  if (enemigos>=8) return 'Terror del Bosque';
+  return 'Recolector Promedio';
+}
+
+function endMessage(kind){
+  switch(kind){
+    case 'ghost': return { title:'Fin del camino…', msg:'Bondiola se desmayó en pleno bosque. Los pajaritos se llevaron lo que quedaba de miel. Al menos fue gracioso.' };
+    case 'drunk': return { title:'Final borracho', msg:'Bondiola se desploma cerca de la taberna. Los enanos casi le roban todo — un oso los espanta, pero la miel también se pierde. "La próxima vez, menos hidromiel."' };
+    case 'hero': return { title:'Final heroico', msg:'Bondiola llega sobrio, con la ropa hecha jirones, y los parroquianos lo aclaman como a un héroe.' };
+    default: return { title:'Un día productivo', msg:'Bondiola llega a la taberna con la borrachera bajo control y la miel a salvo.' };
+  }
+}
+
+async function endGame(kind){
+  if (state === 'end') return;
+  state = 'end';
+
+  let total = mielScore*100 + enemigos*180;
+  if (kind === 'drunk') total = Math.round(total*0.6);
+  else if (kind === 'ghost') total = Math.round(total*0.4);
+  else if (borrachera>=30 && borrachera<=60) total = Math.round(total*1.1);
+
+  const info = endMessage(kind);
+  document.getElementById('endMsg').innerHTML = '<div style="font-size:20px;font-weight:bold;color:var(--honey);margin-bottom:6px;">'+info.title+'</div><div style="font-size:14px;opacity:.85;max-width:300px;">'+info.msg+'</div>';
+  document.getElementById('scoreBig').textContent = total.toLocaleString('es-AR');
+  document.getElementById('nickname').textContent = '"' + nickname() + '"';
+  document.getElementById('resMiel').textContent = '🍯 '+miel;
+  document.getElementById('resEnem').textContent = '⚔️ '+enemigos;
+  document.getElementById('resDrunk').textContent = '🍺 '+borrachera.toFixed(0)+'%';
+
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('endOverlay').classList.remove('hidden');
+
+  await handleBestScore(total);
+}
+
+async function handleBestScore(total){
+  const bestEl = document.getElementById('bestScore');
+  try{
+    let best = 0;
+    try{
+      const res = await window.storage.get('best_score', false);
+      if (res && res.value) best = JSON.parse(res.value).score || 0;
+    }catch(e){ /* no existe todavía */ }
+
+    if (total > best){
+      await window.storage.set('best_score', JSON.stringify({score: total, date: Date.now()}), false);
+      bestEl.textContent = '🏆 ¡Nuevo mejor puntaje! ('+total.toLocaleString('es-AR')+')';
+    } else {
+      bestEl.textContent = 'Mejor puntaje: '+best.toLocaleString('es-AR');
+    }
+  }catch(e){
+    bestEl.textContent = '';
+  }
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function boot(){
+  clock = new THREE.Clock();
+  initThree();
+  setupInput();
+  resetGame();
+  document.getElementById('startBtn').addEventListener('click', startGame);
+  document.getElementById('retryBtn').addEventListener('click', startGame);
+  loop();
+}
+boot();
+})();
+</script>
+</body>
+</html>
