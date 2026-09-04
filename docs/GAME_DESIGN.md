@@ -6,7 +6,9 @@
 
 ## 0. Resumen ejecutivo
 
-**Bondieval** es un juego web casual, vertical, mobile-first, pensado para jugarse en 90–105 segundos y generar el reflejo de "dale, una más" entre un grupo de amigos.
+**Bondieval** es un juego web casual, vertical, mobile-first, pensado para jugarse en unos 60 segundos y generar el reflejo de "dale, una más" entre un grupo de amigos.
+
+> **Nota (prototipo):** el concepto original proponía 90–105s (ver sección 2). En el prototipo jugable esa duración se acortó a 60s tras probarlo — con 90-105s el ritmo se sentía lento — y la velocidad de avance ahora sube en escalones en vez de mantenerse fija. El resto de esta sección y del documento describe el diseño original; donde el prototipo se desvía, queda anotado en la sección correspondiente.
 
 El protagonista, **Bondiola**, avanza automáticamente por un bosque medieval recolectando miel, esquivando o enfrentando abejas y enanos ladrones, mientras lucha (literalmente) contra su propia debilidad por la hidromiel. El corazón del diseño es un sistema de tres variables interdependientes — **Miel 🍯 / Enemigos ⚔️ / Borrachera 🍺** — cuya interacción no se explica, sino que se descubre jugando.
 
@@ -31,6 +33,10 @@ El protagonista, **Bondiola**, avanza automáticamente por un bosque medieval re
 - Duración pensada para generar rejugabilidad inmediata.
 
 **Mejora sugerida:** considerar un **modo "Endless" opcional** desbloqueable después de X partidas, solo para los jugadores más metidos — sin tocar el modo principal, que debe seguir siendo corto y fijo.
+
+**✅ Implementado en el prototipo (con cambios sobre el original):**
+- Duración fija bajada a **60 segundos** (`CFG.DURATION`) — en playtesting, 90-105s se sentía lento.
+- La velocidad de avance ya no es fija: sube en **escalones cada 12 segundos** (`CFG.SPEED_STEP_SEC`), de `BASE_SPEED` a `TOP_SPEED`, en vez de mantenerse constante con un único sprint final. Esto también reemplaza la mejora sugerida de "sprint visual en el tramo final" de la sección 12.
 
 ---
 
@@ -57,6 +63,10 @@ El protagonista, **Bondiola**, avanza automáticamente por un bosque medieval re
 - Zona muerta (dead zone) alrededor del dedo para evitar micro-temblores al recolectar objetos pegados.
 - Considerar **auto-ataque leve** al pasar muy cerca de un enemigo débil, para que jugadores torpes no se frustren (activable/desactivable en dificultad).
 
+**✅ Implementado en el prototipo:**
+- Botón de **pausa** (⏸️) en el HUD, con overlay para reanudar — no estaba en el alcance original de v1 (sección 16).
+- La sensibilidad del arrastre lateral se ajustó a la baja tras playtesting (se sentía demasiado rápida); el eje de profundidad (adelante/atrás) también se corrigió porque el sentido estaba invertido respecto de lo intuitivo (swipe hacia arriba = avanzar).
+
 ---
 
 ## 5. Interfaz
@@ -73,6 +83,10 @@ Variables visibles en pantalla durante la partida:
 Interfaz grande, clara, legible en celular.
 
 **Mejora sugerida:** la barra de Borrachera debería tener **feedback visual progresivo** (color, vibración del ícono, leve distorsión de cámara) para que el jugador *sienta* el estado sin leer el número — reforzando el descubrimiento orgánico en vez de depender del HUD.
+
+**✅ Implementado en el prototipo:**
+- Feedback de color progresivo en la barra de Borrachera según umbral, además del drift de cámara y viñeta (secciones 9 y 14).
+- **Barra de progreso hacia la taberna** (🌲 → 🏠) separada de la barra de tiempo genérica — no estaba especificada en el documento original, se agregó para que el jugador tenga una noción clara de "cuánto falta" sin depender de contar segundos mentalmente.
 
 ---
 
@@ -94,6 +108,8 @@ Interfaz grande, clara, legible en celular.
 - Esto las convierte en una herramienta estratégica (bajar la borrachera a propósito).
 
 **Mejora sugerida:** enjambres pequeños (2-3 abejas en formación) en tramos avanzados, para que el jugador decida entre "una picadura controlada" vs. "arriesgarse a varias".
+
+**✅ Implementado en el prototipo:** las abejas ya no quedan fijas flotando en el aire — tienen vuelo errático (drift lateral senoidal, acotado al ancho del camino) para que esquivarlas/atraparlas sea una decisión activa y no solo de timing en profundidad.
 
 ---
 
@@ -124,9 +140,12 @@ Interfaz grande, clara, legible en celular.
 - **80%+:** además de afectar el final, reducir visión periférica (viñeta) para que cueste más esquivar, cerrando el loop de riesgo/recompensa de forma justa.
 - Dejar que la borrachera **decaiga lentamente con el tiempo** (no solo con picaduras de abeja), para que el jugador tenga otra palanca de control sutil.
 
----
-
-## 10. La estrategia oculta
+**✅ Implementado en el prototipo:**
+- Multiplicador de puntaje por miel en la zona dulce (30–60%) — `scoredHoney()`.
+- **Ataque con más alcance** en la zona dulce (30–60%) — el segundo incentivo que sugería esta sección, no implementado hasta ahora.
+- Decaimiento pasivo de borrachera con el tiempo (`DRUNK_DECAY_PER_SEC`).
+- Cámara/viñeta progresiva en 60–80% y 80%+ (sección visual ya cubierta).
+- Las jarras aparecen **antes** (desde ~t=15/60 en vez de cerca del final) y con **mayor probabilidad** por segmento — en playtesting había muy pocas ocasiones de subir la borrachera a propósito.
 
 Curva de descubrimiento esperada a través de partidas sucesivas: de "juntar toda la miel" → "la borrachera me arruinó" → "un poco de borrachera ayuda" → "las abejas sirven para bajarla" → dominio del sistema.
 
@@ -159,6 +178,8 @@ Curva de descubrimiento esperada a través de partidas sucesivas: de "juntar tod
 | 1:25–1:45 | Tramo final, mayor intensidad, llegada a la taberna |
 
 **Mejora sugerida:** en el tramo final (1:25–1:45), agregar un **pequeño "sprint" visual** (aceleración de cámara/escenario) en los últimos 5-8 segundos antes de la taberna, para darle un cierre de tensión física además de la narrativa.
+
+**✅ Implementado en el prototipo (guión reescalado a 60s):** con la duración bajada a 60s (sección 2), este timeline se reescaló proporcionalmente en `phaseFlags(t)`: abejas desde t≥8, enanos desde t≥17, jarras desde t≥15, caos desde t≥41, tramo final desde t≥50. El "sprint" del tramo final ya no es un evento único: la velocidad sube en escalones cada 12s durante toda la partida (sección 2), así que la sensación de aceleración progresiva está presente desde antes, no solo al final.
 
 ---
 
@@ -198,6 +219,8 @@ Fácil de aprender, difícil de dominar, rápido, divertido aunque se juegue mal
 ## 16. Alcance de la primera versión
 
 **Incluido en v1:** pantalla vertical, un bosque, Bondiola, movimiento lateral + profundidad, avance automático, ataque, panales, abejas, enanos, jarras de hidromiel, vidas, miel, contador de enemigos, borrachera, partida de 1:30–1:45, taberna, al menos dos finales, pantalla de resultados.
+
+*(En el prototipo, la duración fija quedó en 60s y se sumó un botón de pausa — ver secciones 2 y 4.)*
 
 **Fuera de v1:** múltiples niveles, inventario, mejoras permanentes, multijugador, cuentas de usuario, ranking online, gran variedad de enemigos, historia extensa.
 

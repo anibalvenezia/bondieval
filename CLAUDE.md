@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Bondieval
 
 Prototipo jugable de un juego web casual, vertical y mobile-first (ver `docs/GAME_DESIGN.md` para el diseño completo).
@@ -20,11 +24,14 @@ Todo vive en un único IIFE. Las secciones, en orden:
 3. Estado global: `player`, `miel`/`enemigos`/`borrachera`/`vidas`, `objects` (pools de honeycombs/bees/dwarves/jars/trees).
 4. `initThree()` / `resize()` — setup de escena, cámara, luces, piso.
 5. Fábricas de objetos (`makeTree`, `makeHoney`, `makeBee`, `makeDwarf`, `makeJar`) — geometría low-poly hecha a mano, sin modelos externos.
-6. `phaseFlags(t)` y `spawnSegment(z)` — el pacing del guión de partida (qué aparece y cuándo, en base al tiempo transcurrido, siguiendo la sección 12 del documento de diseño).
-7. Input táctil (`onPointerDown/Move/Up`) — arrastre = movimiento lateral+profundidad, tap corto sin arrastre = ataque.
-8. Lógica de gameplay (`doAttack`, `checkPassiveCollisions`, `scoredHoney`) — acá vive la interacción entre las tres variables.
-9. `loop()` — el game loop principal (requestAnimationFrame).
-10. Flujo de partida (`resetGame`, `startGame`, `endGame`, `nickname`, `endMessage`, `handleBestScore`).
+6. `phaseFlags(t)` y `spawnSegment(z)` — el pacing del guión de partida (qué aparece y cuándo, en base al tiempo transcurrido, siguiendo la sección 12 del documento de diseño; los umbrales están escalados a `CFG.DURATION`, no a los tiempos originales del GDD).
+7. `speedAt(t)` — velocidad de avance por escalones (sube cada `CFG.SPEED_STEP_SEC` desde `BASE_SPEED` hasta `TOP_SPEED`).
+8. Input táctil (`onPointerDown/Move/Up`) — arrastre = movimiento lateral+profundidad, tap corto sin arrastre = ataque. El signo de profundidad y el clamp lateral están atados al sistema de coordenadas de cámara (`CFG.CAMERA_Z`) — ver nota de colisión abajo.
+9. Lógica de gameplay (`doAttack`, `checkPassiveCollisions`, `scoredHoney`) — acá vive la interacción entre las tres variables.
+10. `loop()` — el game loop principal (requestAnimationFrame), con estado `'start' | 'playing' | 'paused' | 'end'`; toda la actualización de gameplay está gateada por `state === 'playing'`, así que pausar (`pauseGame`/`resumeGame`) no requiere lógica extra de congelamiento.
+11. Flujo de partida (`resetGame`, `startGame`, `pauseGame`, `resumeGame`, `endGame`, `nickname`, `endMessage`, `handleBestScore`).
+
+**Nota sobre colisiones y profundidad:** la posición de colisión del jugador es `pz = player.worldZ - player.depth` (no `+`). El render de los objetos (`renderZ` en `updatePositions`) no depende de `player.depth`, así que ese signo es el que hace que la colisión coincida con dónde se ve al jugador en pantalla — si se vuelve a tocar el control de profundidad, mantener ese acople.
 
 ## Convenciones
 
@@ -45,7 +52,7 @@ python3 -m http.server 8000
 
 Abrir en `http://localhost:8000` (o el puerto que corresponda), idealmente probando también en un celular real en la misma red, dado que el control es 100% táctil.
 
-No hay tests automatizados ni linter configurado todavía. Verificación manual: abrir en navegador, jugar una partida completa (~100s) y confirmar que no hay errores en consola.
+No hay tests automatizados ni linter configurado todavía. Verificación manual: abrir en navegador, jugar una partida completa (~60s) y confirmar que no hay errores en consola.
 
 ## Próximos pasos del proyecto
 
