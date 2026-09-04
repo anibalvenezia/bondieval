@@ -325,6 +325,7 @@ let player = {
 let miel = 0, enemigos = 0, borrachera = 0, vidas = CFG.LIVES;
 let mielScore = 0; // acumulado ya con multiplicadores aplicados
 let lastSpawnZ = 0;
+let lastHealerSpawnZ = -9999;
 let objects = { honey: [], bees: [], dwarves: [], jars: [], trees: [] };
 
 let bestScoreCache = null;
@@ -389,6 +390,16 @@ function initThree(){
   nose.position.set(0,1.72,0.32);
   player.group.add(nose);
   player.mesh = body;
+
+  // aura dorada: se prende sola en la "zona dulce" de borrachera (30-60%), ver updateDrunkFX
+  const aura = new THREE.Mesh(
+    new THREE.SphereGeometry(0.62, 12, 12),
+    new THREE.MeshBasicMaterial({ color:0xffcf6b, transparent:true, opacity:0, depthWrite:false })
+  );
+  aura.position.y = 1.05;
+  player.group.add(aura);
+  player.aura = aura;
+
   scene.add(player.group);
 
   resize();
@@ -439,9 +450,12 @@ function makeHoney(x, z, exposed){
   objects.honey.push(g);
 }
 
-function makeBee(x, z){
+function makeBee(x, z, healer){
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.22,8,8), new THREE.MeshLambertMaterial({color:0xf2d33b}));
+  const bodyColor = healer ? 0x5be86b : 0xf2d33b;
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.22,8,8), new THREE.MeshLambertMaterial({
+    color:bodyColor, emissive: healer?0x1c6b2a:0x000000, emissiveIntensity: healer?0.7:0,
+  }));
   g.add(body);
   const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.22,0.05,6,10), new THREE.MeshLambertMaterial({color:0x1a1a1a}));
   stripe.rotation.y = Math.PI/2;
@@ -451,9 +465,17 @@ function makeBee(x, z){
   const wingMat = new THREE.MeshLambertMaterial({ color:0xffffff, transparent:true, opacity:0.55 });
   const w1 = new THREE.Mesh(wingGeo, wingMat); w1.position.set(0.18,0.18,0); g.add(w1);
   const w2 = new THREE.Mesh(wingGeo, wingMat); w2.position.set(-0.18,0.18,0); g.add(w2);
+  if (healer){
+    // halo bien diferenciado: esta abeja, si se mata de un ataque, devuelve 1 vida
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(0.36,10,10),
+      new THREE.MeshBasicMaterial({ color:0x9dffb0, transparent:true, opacity:0.4 })
+    );
+    g.add(halo);
+  }
   g.position.set(x, 1.3, -z);
   g.userData = {
-    worldZ:z, x, alive:true, bob:Math.random()*10, baseY:1.3,
+    worldZ:z, x, alive:true, bob:Math.random()*10, baseY:1.3, healer:!!healer,
     baseX:x, driftAmp: 0.5 + Math.random()*0.7, driftSpeed: 0.5 + Math.random()*0.4,
   };
   scene.add(g);
@@ -534,8 +556,13 @@ function spawnSegment(z){
     const swarm = flags.chaos && Math.random()<0.4;
     const count = swarm ? 2 + (Math.random()<0.4?1:0) : 1;
     const baseX = (Math.random()*2-1)*hw*0.7;
+    // abeja especial: solo con 1 vida, una a la vez, con cooldown — matarla de un
+    // ataque devuelve 1 vida; si pica, es una picadura normal (puede terminar la partida)
+    const canHealer = vidas === 1 && (z - lastHealerSpawnZ) > 24 &&
+      !objects.bees.some(b=>b.userData.healer && b.userData.alive);
+    if (canHealer) lastHealerSpawnZ = z;
     for(let i=0;i<count;i++){
-      makeBee(baseX + i*0.7 - (count-1)*0.35, z + 1.5 + Math.random()*2 + i*0.4);
+      makeBee(baseX + i*0.7 - (count-1)*0.35, z + 1.5 + Math.random()*2 + i*0.4, canHealer && i===0);
     }
   }
   if (flags.dwarves && Math.random() < 0.32*density){
@@ -566,12 +593,16 @@ function cleanupBehind(){
 /* ============================================================
    TOASTS
    ============================================================ */
-function toast(text, color){
+function toast(text, color, big){
   const layer = document.getElementById('toastLayer');
   const el = document.createElement('div');
   el.className = 'toast';
   el.textContent = text;
   if (color) el.style.color = color;
+  if (big){
+    el.style.fontSize = '26px';
+    el.style.textShadow = '0 2px 4px rgba(0,0,0,0.8), 0 0 16px rgba(255,207,107,0.9)';
+  }
   layer.appendChild(el);
   setTimeout(()=> el.remove(), 1200);
 }
@@ -651,9 +682,10 @@ function doAttack(){
       hit = true;
       enemigos += 1;
       if (Math.random() < 0.4){
+        const bonus = scoredHoney(1) > 1;
         miel += 1;
         mielScore += scoredHoney(1);
-        toast('+1 🍯', '#f2c23b');
+        toast('+1 🍯', bonus?'#ffe066':'#f2c23b', bonus);
       }
       toast('¡Enano derrotado! +1 ⚔️', '#e8871e');
     }
@@ -666,6 +698,10 @@ function doAttack(){
     if (Math.abs(dx) < reach*0.9 && dz > -1.2 && dz < 2.0){
       o.userData.alive = false;
       hit = true;
+      if (o.userData.healer){
+        vidas = Math.min(CFG.LIVES, vidas + 1);
+        toast('+1 ❤️', '#5be86b');
+      }
     }
   });
 
@@ -689,9 +725,10 @@ function checkPassiveCollisions(){
     if (Math.abs(dx) < R && Math.abs(dz) < R){
       o.userData.alive = false;
       const gained = scoredHoney(o.userData.value);
+      const bonus = gained > o.userData.value;
       miel += o.userData.value;
       mielScore += gained;
-      toast('+'+o.userData.value+' 🍯', '#f2c23b');
+      toast('+'+o.userData.value+' 🍯', bonus?'#ffe066':'#f2c23b', bonus);
     }
   });
 
@@ -776,6 +813,14 @@ function updateDrunkFX(dt, t){
   } else {
     vignette.style.opacity = 0;
   }
+
+  // zona dulce (30-60%): aura dorada pulsante en Bondiola — comunica el bonus
+  // de scoredHoney() y el mayor alcance de ataque (doAttack) sin explicarlo en texto
+  const targetOpacity = (borrachera >= 30 && borrachera <= 60)
+    ? 0.22 + 0.12*Math.sin(t*4.5)
+    : 0;
+  player.aura.material.opacity += (targetOpacity - player.aura.material.opacity) * Math.min(1, dt*6);
+
   return { camDriftX, camDriftY };
 }
 
@@ -862,6 +907,7 @@ function resetGame(){
   player.attackCooldown=0; player.attackFlash=0; player.hitFlash=0;
   miel=0; enemigos=0; borrachera=0; vidas=CFG.LIVES; mielScore=0;
   lastSpawnZ = 0;
+  lastHealerSpawnZ = -9999;
   for (const key of Object.keys(objects)){
     objects[key].forEach(o=>scene.remove(o));
     objects[key] = [];
