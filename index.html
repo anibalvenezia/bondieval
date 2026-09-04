@@ -345,6 +345,8 @@ let player = {
   attackCooldown: 0,
   attackFlash: 0,
   hitFlash: 0,
+  attackRingT: 0,
+  attackRingHit: false,
 };
 
 let miel = 0, enemigos = 0, borrachera = 0, vidas = CFG.LIVES;
@@ -427,6 +429,18 @@ function initThree(){
   aura.position.y = 1.05;
   player.group.add(aura);
   player.aura = aura;
+
+  // anillo de alcance: se muestra al atacar para que el jugador vea el área real
+  // del golpe (dorado si conectó, gris si fue al aire) — ver doAttack/updateAttackRing
+  const ringGeo = new THREE.RingGeometry(0.82, 1, 24);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color:0xfff2c2, transparent:true, opacity:0, side:THREE.DoubleSide, depthWrite:false, fog:false
+  });
+  const attackRing = new THREE.Mesh(ringGeo, ringMat);
+  attackRing.rotation.x = -Math.PI/2;
+  attackRing.position.y = 0.06;
+  scene.add(attackRing);
+  player.attackRing = attackRing;
 
   scene.add(player.group);
 
@@ -728,16 +742,22 @@ function onPointerUp(e){
 /* ============================================================
    GAMEPLAY LOGIC
    ============================================================ */
+// alcance del ataque: un poco mayor en la zona dulce de borrachera (30-60%),
+// además del bonus de puntaje que ya aplica scoredHoney()
+function reachAt(){
+  return (borrachera >= 30 && borrachera <= 60) ? 1.35 : 1.1;
+}
+
 function doAttack(){
   if (player.attackCooldown > 0) return;
   player.attackCooldown = 0.35;
   player.attackFlash = 0.25;
+  player.attackRingT = 1;
+  player.attackRingReach = reachAt(); // ancho del anillo = alcance real del ataque
 
   const px = player.x, pz = player.worldZ - player.depth;
   let hit = false;
-  // zona dulce (30-60% borrachera): además del bonus de puntaje en scoredHoney(),
-  // el ataque llega un poco más lejos — golpe más "suelto"
-  const reach = (borrachera >= 30 && borrachera <= 60) ? 1.35 : 1.1;
+  const reach = reachAt();
 
   objects.dwarves.forEach(o=>{
     if (!o.userData.alive) return;
@@ -771,8 +791,9 @@ function doAttack(){
     }
   });
 
+  player.attackRingHit = hit;
   if (!hit){
-    // igual mostramos el gesto, sin feedback de texto para no saturar
+    toast('💨 al aire', '#c9b8a3');
   }
 }
 
@@ -919,6 +940,7 @@ function loop(){
     if (player.attackCooldown>0) player.attackCooldown -= dt;
     if (player.attackFlash>0) player.attackFlash -= dt;
     if (player.hitFlash>0) player.hitFlash -= dt;
+    if (player.attackRingT>0) player.attackRingT -= dt/0.4;
 
     borrachera = Math.max(0, borrachera - CFG.DRUNK_DECAY_PER_SEC*dt);
 
@@ -955,6 +977,20 @@ function loop(){
     player.mesh.material.emissive.setHex(0x000000);
   }
 
+  // anillo de alcance: muestra el área real del golpe (ver reachAt/doAttack),
+  // dorado si conectó, gris si fue al aire — se desvanece en ~0.4s
+  if (player.attackRingT > 0){
+    const ring = player.attackRing;
+    ring.visible = true;
+    ring.position.x = player.x;
+    ring.position.z = player.depth - 0.4;
+    ring.scale.set(player.attackRingReach, 1.6, 1);
+    ring.material.opacity = player.attackRingT * 0.8;
+    ring.material.color.setHex(player.attackRingHit ? 0xfff2c2 : 0x9a9a9a);
+  } else {
+    player.attackRing.visible = false;
+  }
+
   const drift = updateDrunkFX(dt, elapsed);
   const camX = player.x*0.4 + drift.camDriftX;
   const camY = 3.1 + drift.camDriftY;
@@ -972,7 +1008,7 @@ function loop(){
 function resetGame(){
   elapsed = 0; speed = CFG.BASE_SPEED;
   player.x=0; player.targetX=0; player.depth=0; player.targetDepth=0; player.worldZ=0;
-  player.attackCooldown=0; player.attackFlash=0; player.hitFlash=0;
+  player.attackCooldown=0; player.attackFlash=0; player.hitFlash=0; player.attackRingT=0;
   miel=0; enemigos=0; borrachera=0; vidas=CFG.LIVES; mielScore=0;
   lastSpawnZ = 0;
   lastHealerSpawnZ = -9999;
