@@ -105,6 +105,7 @@
     background:linear-gradient(90deg,#e8c23b,var(--honey));
     transition:width .1s linear;
   }
+  #kmLeft{ font-size:11px; min-width:36px; text-align:right; opacity:.9; }
 
   /* ---------- Toasts ---------- */
   #toastLayer{
@@ -200,6 +201,7 @@
     font-style:italic; margin-bottom:4px;
   }
   #endMsg{ font-size:14px; opacity:.8; max-width:300px; margin-bottom:10px;}
+  #distanceLine{ font-size:14px; opacity:.85; margin-bottom:8px; color:var(--parchment); }
   #bestScore{ font-size:13px; opacity:.7; margin-bottom:18px; }
 
   #startPrompt{
@@ -228,6 +230,7 @@
       <div id="progressRow">
         <span class="icon">🌲</span>
         <div id="progressWrap"><div id="progressFill"></div></div>
+        <span id="kmLeft">3.2km</span>
         <span class="icon">🏠</span>
       </div>
     </div>
@@ -251,6 +254,7 @@
       <div id="scoreBig">0</div>
       <div id="nickname"></div>
       <div id="resultLine"><span id="resMiel">🍯 0</span><span id="resEnem">⚔️ 0</span><span id="resDrunk">🍺 0%</span></div>
+      <div id="distanceLine" class="hidden"></div>
       <div id="bestScore"></div>
       <button class="btn" id="retryBtn">Jugar de nuevo</button>
     </div>
@@ -276,6 +280,9 @@ const CFG = {
   TOP_SPEED: 8.4,          // unidades/seg en el último escalón
   SPEED_STEP_SEC: 12,      // cada cuántos segundos sube un escalón de velocidad
   SEGMENT_LEN: 6,          // longitud de cada "segmento" de spawn
+  TOTAL_TRIP_KM: 3.2,      // "km narrativos" de todo el recorrido (flavor stat, no física real)
+  TAVERN_REVEAL_SEC: 12,   // segundos antes del final en que la taberna empieza a insinuarse
+  TAVERN_FULL_SEC: 3,      // segundos antes del final en que se ve nítida
   PLAYER_LATERAL_SPEED: 3.2, // sensibilidad de arrastre lateral
   PLAYER_DEPTH_RANGE: 1.6, // banda de profundidad controlable
   CAMERA_Z: 5.4,           // distancia fija de la cámara al origen
@@ -295,6 +302,24 @@ const SPEED_STEP_INC = (CFG.TOP_SPEED - CFG.BASE_SPEED) / Math.max(1, SPEED_STEP
 function speedAt(t){
   const step = Math.min(Math.floor(t / CFG.SPEED_STEP_SEC), SPEED_STEPS - 1);
   return CFG.BASE_SPEED + step * SPEED_STEP_INC;
+}
+
+// distancia total del recorrido (integral de speedAt a lo largo de CFG.DURATION),
+// usada para la barra/medición de "km hasta la taberna" — no es física real,
+// es solo un flavor stat (CFG.TOTAL_TRIP_KM = km "narrativos" de todo el trayecto)
+const TOTAL_DISTANCE = (()=>{
+  let total = 0, remaining = CFG.DURATION, step = 0;
+  while (remaining > 0){
+    const segLen = Math.min(CFG.SPEED_STEP_SEC, remaining);
+    total += speedAt(step * CFG.SPEED_STEP_SEC) * segLen;
+    remaining -= segLen;
+    step++;
+  }
+  return total;
+})();
+function kmRemainingAt(worldZ){
+  const frac = THREE.MathUtils.clamp((TOTAL_DISTANCE - worldZ) / TOTAL_DISTANCE, 0, 1);
+  return frac * CFG.TOTAL_TRIP_KM;
 }
 
 function pathHalfWidthAt(z){
@@ -327,6 +352,7 @@ let mielScore = 0; // acumulado ya con multiplicadores aplicados
 let lastSpawnZ = 0;
 let lastHealerSpawnZ = -9999;
 let objects = { honey: [], bees: [], dwarves: [], jars: [], trees: [] };
+let tavern, tavernMaterials = [];
 
 let bestScoreCache = null;
 
@@ -372,6 +398,8 @@ function initThree(){
   pathMesh.position.set(0, 0.01, -60);
   scene.add(pathMesh);
 
+  makeTavern();
+
   // player
   player.group = new THREE.Group();
   const bodyGeo = typeof THREE.CapsuleGeometry === 'function' ? new THREE.CapsuleGeometry(0.45, 0.7, 4, 8) : new THREE.CylinderGeometry(0.45,0.45,1.4,10);
@@ -416,6 +444,44 @@ function resize(){
 /* ============================================================
    ENVIRONMENT / SPAWN
    ============================================================ */
+// la taberna: landmark fijo al final del recorrido (worldZ = TOTAL_DISTANCE).
+// fog:false + opacity manual (ver updateTavern) en vez del fog automático de Three,
+// para poder controlar exactamente cuándo empieza a insinuarse en la niebla.
+function makeTavern(){
+  const g = new THREE.Group();
+  const wallMat = new THREE.MeshLambertMaterial({ color:0x6b4423, transparent:true, opacity:0, fog:false });
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(2.2,1.6,1.8), wallMat);
+  wall.position.y = 0.8;
+  g.add(wall);
+  const roofMat = new THREE.MeshLambertMaterial({ color:0x7a2a22, transparent:true, opacity:0, fog:false });
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.75,1.1,4), roofMat);
+  roof.rotation.y = Math.PI/4;
+  roof.position.y = 2.15;
+  g.add(roof);
+  const glowMat = new THREE.MeshBasicMaterial({ color:0xffdd88, transparent:true, opacity:0, fog:false });
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(0.55,0.6), glowMat);
+  glow.position.set(0, 0.75, 0.91);
+  g.add(glow);
+  g.position.set(0, 0, -TOTAL_DISTANCE);
+  scene.add(g);
+  tavern = g;
+  tavernMaterials = [wallMat, roofMat, glowMat];
+}
+
+function updateTavern(elapsed){
+  tavern.position.z = player.worldZ - TOTAL_DISTANCE;
+  const remaining = CFG.DURATION - elapsed;
+  if (remaining > CFG.TAVERN_REVEAL_SEC){
+    tavernMaterials.forEach(m=> m.opacity = 0);
+    return;
+  }
+  const t = THREE.MathUtils.clamp(
+    (CFG.TAVERN_REVEAL_SEC - remaining) / (CFG.TAVERN_REVEAL_SEC - CFG.TAVERN_FULL_SEC), 0, 1
+  );
+  const opacity = THREE.MathUtils.lerp(0.12, 1, t);
+  tavernMaterials.forEach(m=> m.opacity = opacity);
+}
+
 function makeTree(x, z){
   const g = new THREE.Group();
   const trunk = new THREE.Mesh(
@@ -838,6 +904,7 @@ function updateHUD(){
   document.getElementById('drunkFill').style.background = barColor;
 
   document.getElementById('progressFill').style.width = Math.min(100,(elapsed/CFG.DURATION*100)).toFixed(1)+'%';
+  document.getElementById('kmLeft').textContent = kmRemainingAt(player.worldZ).toFixed(1)+'km';
 }
 
 function loop(){
@@ -860,6 +927,7 @@ function loop(){
 
     trySpawnAhead();
     updatePositions(dt);
+    updateTavern(elapsed);
     checkPassiveCollisions();
     cleanupBehind();
     updateHUD();
@@ -973,6 +1041,15 @@ async function endGame(kind){
   document.getElementById('resMiel').textContent = '🍯 '+miel;
   document.getElementById('resEnem').textContent = '⚔️ '+enemigos;
   document.getElementById('resDrunk').textContent = '🍺 '+borrachera.toFixed(0)+'%';
+
+  const distanceEl = document.getElementById('distanceLine');
+  const kmLeft = kmRemainingAt(player.worldZ);
+  if (kmLeft > 0.05){
+    distanceEl.textContent = 'Distancia a la taberna: ' + kmLeft.toFixed(1) + 'km';
+    distanceEl.classList.remove('hidden');
+  } else {
+    distanceEl.classList.add('hidden');
+  }
 
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('endOverlay').classList.remove('hidden');
