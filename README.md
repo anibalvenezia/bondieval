@@ -13,6 +13,7 @@ Prototipo jugable (`index.html`), autocontenido, hecho con [Three.js](https://th
 - Abeja de rescate: aparece diferenciada cuando queda 1 sola vida — matarla de un ataque devuelve una vida, fallar y que pique es una picadura normal.
 - Barra de progreso hacia la taberna con distancia restante en km, además de las stats de Miel/Enemigos/Vida y borrachera; la misma distancia se muestra en el resumen si la partida termina antes de llegar.
 - La taberna se insinúa entre la niebla en el tramo final y se va acercando hasta el final de la partida.
+- Anillo de alcance al atacar (dorado si conecta, gris si es al aire) y toast "💨 al aire" cuando falla — feedback agregado tras testeo con no-gamers, que notaron que no quedaba claro el timing del ataque contra abejas/enanos.
 - Cuatro finales (normal, borracho, fantasma, heroico) con apodo cómico calculado.
 - Mejor puntaje persistente y pantalla de resultados.
 
@@ -32,4 +33,4 @@ El documento de diseño completo, con las mejoras propuestas sobre el concepto o
 
 ## Próximos pasos
 
-Con esto se da por cerrada la etapa de feedback y pulido del prototipo. Ver la sección "Próximos pasos sugeridos" del documento de diseño: testeo con no-gamers, arte final (reemplazar geometría gris), SFX/música, y feature de compartir resultado como imagen.
+Con el testeo real con no-gamers ya hecho y el ajuste de legibilidad del ataque, se da por cerrada la etapa de feedback y pulido del prototipo. Ver la sección "Próximos pasos sugeridos" del documento de diseño: arte final (reemplazar geometría gris), SFX/música, y feature de compartir resultado como imagen.
