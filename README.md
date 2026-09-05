@@ -29,7 +29,7 @@ python3 -m http.server 8000
 
 ## Documentación
 
-El documento de diseño completo, con las mejoras propuestas sobre el concepto original, está en [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
+El documento de diseño completo, con las mejoras propuestas sobre el concepto original, está en [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Para reemplazar la geometría placeholder por arte final, ver la referencia técnica pieza por pieza en [`docs/ART_REFERENCE.md`](docs/ART_REFERENCE.md).
 
 ## Próximos pasos
 

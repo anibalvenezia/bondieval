@@ -56,4 +56,6 @@ No hay tests automatizados ni linter configurado todavía. Verificación manual:
 
 ## Próximos pasos del proyecto
 
-Con las últimas rondas de ajustes (abeja de rescate, feedback visual de la zona dulce, distancia en km, taberna emergiendo entre la niebla, anillo de alcance de ataque) más un testeo real con 2 no-gamers, se dio por cerrada la etapa de feedback/pulido del prototipo. Ver la sección "Próximos pasos sugeridos" al final de `docs/GAME_DESIGN.md`: arte final (reemplazar la geometría gris de las fábricas de objetos, incluida la taberna), SFX/música, y feature de compartir resultado como imagen.
+Con las últimas rondas de ajustes (abeja de rescate, feedback visual de la zona dulce, distancia en km, taberna emergiendo entre la niebla, anillo de alcance de ataque) más un testeo real con 2 no-gamers, se dio por cerrada la etapa de feedback/pulido del prototipo. Se evaluó y descartó explícitamente la feature de "compartir resultado como imagen" (no valía el esfuerzo frente a un simple screenshot manual) — no reabrirla sin que el usuario lo pida de nuevo.
+
+Lo que sigue es **arte final** (reemplazar toda la geometría placeholder) y SFX/música — ninguna de las dos las puede producir Claude directamente. Para la parte de arte, ya existe `docs/ART_REFERENCE.md` con las dimensiones/colores/pivotes exactos de cada objeto placeholder y qué comportamientos de gameplay dependen de esa geometría (mantenerlo actualizado si se vuelve a tocar alguna fábrica de objetos en `index.html`).

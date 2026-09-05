@@ -216,6 +216,8 @@ El "sprint" del tramo final ya no es un evento único: la velocidad sube en esca
 
 ## 14. Dirección visual
 
+> Para el reemplazo pieza por pieza de la geometría placeholder actual (dimensiones exactas, colores, pivotes y qué animaciones/estados debe soportar cada modelo), ver [`ART_REFERENCE.md`](ART_REFERENCE.md) — es el mapa técnico complementario a esta sección.
+
 - 3D caricaturesca, medieval, humorística — no realista.
 - Bosque con árboles, vegetación, piedras, troncos, animaciones ambientales, camino con profundidad real.
 - La perspectiva es parte de la mecánica, no solo estética.
