@@ -126,6 +126,8 @@ Interfaz grande, clara, legible en celular.
 - Un enano "carterista" que roba miel ya recolectada por el jugador si se le acerca demasiado sin atacar primero — refuerza que ignorarlos también tiene costo.
 - Telegrafiar el ataque de los enanos con una animación clara (0.3–0.5s) para que el combate se sienta justo en celular, donde la precisión táctil es limitada.
 
+**✅ Implementado en el prototipo (variante: telegrafiar el ataque de Bondiola, no el de los enanos):** en testeo con no-gamers, el problema resultó ser el lado opuesto — no quedaba claro *cuándo el propio ataque del jugador* conecta contra abejas o enanos, sobre todo sin arte final que le dé silueta clara a los enemigos. Se agregó un anillo de alcance elíptico que aparece con cada ataque (dorado si conectó, gris si fue al aire) más un toast "💨 al aire" en los fallos, para que el jugador calibre el timing por prueba y error sin necesitar arte definitivo. Telegrafiar también el ataque de los enanos sigue pendiente como mejora sugerida.
+
 ---
 
 ## 9. Hidromiel y borrachera
@@ -172,6 +174,8 @@ Curva de descubrimiento esperada a través de partidas sucesivas: de "juntar tod
 
 ## 12. Guión de una partida (timeline)
 
+*(Tabla original, pensada para partidas de 90–105s — ver más abajo el guión real del prototipo con `CFG.DURATION = 60`.)*
+
 | Tiempo | Beat |
 |---|---|
 | 0:00–0:15 | Introducción al movimiento, primeros panales |
@@ -181,9 +185,20 @@ Curva de descubrimiento esperada a través de partidas sucesivas: de "juntar tod
 | 1:10–1:25 | Caos y combinaciones de decisiones |
 | 1:25–1:45 | Tramo final, mayor intensidad, llegada a la taberna |
 
-**Mejora sugerida:** en el tramo final (1:25–1:45), agregar un **pequeño "sprint" visual** (aceleración de cámara/escenario) en los últimos 5-8 segundos antes de la taberna, para darle un cierre de tensión física además de la narrativa.
+**Mejora sugerida:** en el tramo final, agregar un **pequeño "sprint" visual** (aceleración de cámara/escenario) en los últimos 5-8 segundos antes de la taberna, para darle un cierre de tensión física además de la narrativa.
 
-**✅ Implementado en el prototipo (guión reescalado a 60s):** con la duración bajada a 60s (sección 2), este timeline se reescaló proporcionalmente en `phaseFlags(t)`: abejas desde t≥8, enanos desde t≥17, jarras desde t≥15, caos desde t≥41, tramo final desde t≥50. El "sprint" del tramo final ya no es un evento único: la velocidad sube en escalones cada 12s durante toda la partida (sección 2), así que la sensación de aceleración progresiva está presente desde antes, no solo al final.
+**✅ Guión real del prototipo (60s, reescalado proporcionalmente en `phaseFlags(t)`):**
+
+| Tiempo | Beat |
+|---|---|
+| 0:00–0:08 | Introducción al movimiento, primeros panales |
+| 0:08–0:15 | Primeras abejas, aprendizaje de esquiva |
+| 0:15–0:17 | Primeras jarras de hidromiel |
+| 0:17–0:41 | Primer enano ladrón, combate y recompensa |
+| 0:41–0:50 | Caos y combinaciones de decisiones |
+| 0:48–1:00 | Tramo final: mayor intensidad, la taberna se insinúa entre la niebla (nítida desde 0:57) hasta la llegada |
+
+El "sprint" del tramo final ya no es un evento único: la velocidad sube en escalones cada 12s durante toda la partida (sección 2), así que la sensación de aceleración progresiva está presente desde antes, no solo al final.
 
 ---
 
@@ -200,6 +215,8 @@ Curva de descubrimiento esperada a través de partidas sucesivas: de "juntar tod
 ---
 
 ## 14. Dirección visual
+
+> Para el reemplazo pieza por pieza de la geometría placeholder actual (dimensiones exactas, colores, pivotes y qué animaciones/estados debe soportar cada modelo), ver [`ART_REFERENCE.md`](ART_REFERENCE.md) — es el mapa técnico complementario a esta sección.
 
 - 3D caricaturesca, medieval, humorística — no realista.
 - Bosque con árboles, vegetación, piedras, troncos, animaciones ambientales, camino con profundidad real.
@@ -260,7 +277,7 @@ Fácil de aprender, difícil de dominar, rápido, divertido aunque se juegue mal
 
 ## 18. Próximos pasos sugeridos
 
-**✅ Etapa de feedback y pulido del prototipo cerrada (2026-09-04).** El punto 1 de esta lista queda cubierto — el prototipo de movimiento existe, pasó por varias rondas de ajuste (controles, ritmo, abejas, incentivos de borrachera, abeja de rescate, distancia/taberna) y se considera suficientemente sólido para pasar a los puntos 3 y 4.
+**✅ Etapa de feedback y pulido del prototipo cerrada (2026-09-04).** Los puntos 1 y 3 de esta lista quedan cubiertos: el prototipo de movimiento pasó por varias rondas de ajuste (controles, ritmo, abejas, incentivos de borrachera, abeja de rescate, distancia/taberna, anillo de alcance de ataque), y ya se testeó con 2 personas del grupo de amigos que no son gamers. Su feedback: la distancia en km a la taberna les gustó, y confirmaron que no quedaba claro el timing del ataque contra abejas/enanos — atendido con el anillo de alcance y el feedback de "al aire" (sección 8). Queda pendiente el punto 4 (definir el asset de compartir resultado) antes de pasar a arte final.
 
 1. Prototipo de movimiento (sección 3 y 4) sin arte final, para validar que "atravesar el bosque 90-105 segundos" ya sea divertido — tal como indica el documento original en su cierre.
 2. Prototipar el sistema de borrachera de forma aislada (sin enanos ni abejas) para calibrar los umbrales (30/60/80%) antes de integrarlo con el resto.
